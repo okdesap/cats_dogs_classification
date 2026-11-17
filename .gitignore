@@ -1,0 +1,13 @@
+# Daten und Modelle (zu groß fürs Repository)
+data/
+*.pth
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS / Editor
+.DS_Store
+.vscode/
