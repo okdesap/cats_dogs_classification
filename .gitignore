@@ -1,4 +1,4 @@
-# Daten und Modelle (zu groß fürs Repository)
+# Data and models (too large for the repository)
 data/
 *.pth
 *.zip

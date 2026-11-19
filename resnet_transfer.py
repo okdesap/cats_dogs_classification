@@ -6,12 +6,12 @@ from torch.utils.data import DataLoader, Dataset, random_split
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(device)
 
-# --- Daten: derselbe Split wie beim eigenen CNN ---
-root = "data/cats_and_dogs"
+#Data: the same split as the custom CNN 
+root = "data/cats_and_dogs_kaggle"
 dataset = datasets.ImageFolder(root=root)
 train_raw, test_raw = random_split(dataset, [0.8, 0.2], generator=torch.Generator().manual_seed(42))
 
-# ResNet wurde auf ImageNet trainiert: Eingaben müssen mit denselben Werten normalisiert werden
+# ResNet was trained on ImageNet, so inputs must use the same normalization values
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 train_transform = transforms.Compose([
@@ -27,7 +27,7 @@ test_transform = transforms.Compose([
     normalize,
 ])
 
-class MitTransform(Dataset):
+class WithTransform(Dataset):
     def __init__(self, subset, transform):
         self.subset = subset
         self.transform = transform
@@ -37,18 +37,18 @@ class MitTransform(Dataset):
         img, label = self.subset[idx]
         return self.transform(img), label
 
-train_loader = DataLoader(MitTransform(train_raw, train_transform), batch_size=32, shuffle=True)
-test_loader = DataLoader(MitTransform(test_raw, test_transform), batch_size=32)
+train_loader = DataLoader(WithTransform(train_raw, train_transform), batch_size=32, shuffle=True)
+test_loader = DataLoader(WithTransform(test_raw, test_transform), batch_size=32)
 
-# --- Modell: vortrainiertes ResNet18, nur der letzte Layer wird neu trainiert ---
+#Model: pretrained ResNet18; only the final layer is trained
 net = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 for param in net.parameters():
-    param.requires_grad = False                # Backbone einfrieren
-net.fc = nn.Linear(net.fc.in_features, 2)      # neuer Ausgabelayer (512 -> 2), trainierbar
+    param.requires_grad = False                # Freeze the backbone
+net.fc = nn.Linear(net.fc.in_features, 2)      # New trainable output layer (512 -> 2)
 net = net.to(device)
 
 def set_train_mode(net):
-    # Backbone bleibt im eval-Modus, damit die BatchNorm-Statistiken von ImageNet erhalten bleiben
+    # Keep the backbone in eval mode to preserve ImageNet BatchNorm statistics
     net.train()
     for name, module in net.named_children():
         if name != "fc":
@@ -75,7 +75,7 @@ def evaluate(loader, net, loss_fn):
     return total_loss / len(loader), accuracy, precision, recall
 
 loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(net.fc.parameters(), lr=0.01, momentum=0.9)   # nur fc
+optimizer = torch.optim.SGD(net.fc.parameters(), lr=0.01, momentum=0.9)   # Only the final layer
 
 epochs = 10
 for epoch in range(epochs):

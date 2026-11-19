@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(device)
 
-root = "data/cats_and_dogs"
+root = "data/cats_and_dogs_kaggle"
 dataset = datasets.ImageFolder(root=root)
 train_raw, test_raw = random_split(dataset, [0.8, 0.2], generator=torch.Generator().manual_seed(42))
 
@@ -21,7 +21,7 @@ test_transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-class MitTransform(Dataset):
+class WithTransform(Dataset):
     def __init__(self, subset, transform):
         self.subset = subset
         self.transform = transform
@@ -31,8 +31,8 @@ class MitTransform(Dataset):
         img, label = self.subset[idx]
         return self.transform(img), label
 
-train_loader = DataLoader(MitTransform(train_raw, train_transform), batch_size=32, shuffle=True)
-test_loader = DataLoader(MitTransform(test_raw, test_transform), batch_size=32)
+train_loader = DataLoader(WithTransform(train_raw, train_transform), batch_size=32, shuffle=True)
+test_loader = DataLoader(WithTransform(test_raw, test_transform), batch_size=32)
 
 class NeuralNetwork(nn.Module):
     def __init__(self):
@@ -94,9 +94,9 @@ for epoch in range(epochs):
           f"Test Loss {te_loss:.4f} Acc {te_acc:.4f} Prec {te_prec:.4f} Rec {te_rec:.4f}")
     torch.save(net.state_dict(), f"checkpoint_epoch_{epoch+1}.pth")
 
-# Checkpoint laden und zeigen, dass es funktioniert
+# Load the checkpoint and verify that it works.
 best = NeuralNetwork().to(device)
 best.load_state_dict(torch.load(f"checkpoint_epoch_{epochs}.pth", weights_only=True, map_location=device))
 te_loss, te_acc, te_prec, te_rec = evaluate(test_loader, best, loss_fn)
-print(f"Geladener Checkpoint (Epoche {epochs}): "
+print(f"Loaded checkpoint (epoch {epochs}): "
       f"Test Loss {te_loss:.4f} Acc {te_acc:.4f} Prec {te_prec:.4f} Rec {te_rec:.4f}")
